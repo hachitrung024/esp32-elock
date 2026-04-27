@@ -1,0 +1,25 @@
+/ {
+    wifi_ap: wifi_ap {
+        compatible = "espressif,esp32-wifi";
+        status = "okay";
+    };
+
+    aliases {
+        lock-out = &lock_gpio_node;
+        btn-lock = &btn_gpio_node;
+    };
+
+    lock_gpio_node: lock-output {
+        compatible = "gpio-leds";
+        lock_pin: lock_pin {
+            gpios = <&gpio1 16 GPIO_ACTIVE_HIGH>;
+        };
+    };
+
+    btn_gpio_node: lock-button {
+        compatible = "gpio-keys";
+        btn_pin: btn_pin {
+            gpios = <&gpio0 0 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+        };
+    };
+};
