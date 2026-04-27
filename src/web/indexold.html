@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SmartLock</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --gap: 12px;
+  --radius: 14px;
+  --card-bg: Canvas;
+  --card-border: color-mix(in srgb, CanvasText 12%, transparent);
+  --muted: color-mix(in srgb, CanvasText 55%, transparent);
+  --green: #1D9E75;
+  --amber: #EF9F27;
+  --red: #E24B4A;
+  --purple: #534AB7;
+  --purple-fg: #EEEDFE;
+  --keypad-bg: color-mix(in srgb, CanvasText 6%, transparent);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: Canvas;
+  color: CanvasText;
+  padding: 16px;
+  min-height: 100vh;
+}
+.app {
+  max-width: 360px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+h1 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 4px 0 8px;
+  text-align: center;
+}
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); }
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+.card .label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+  letter-spacing: 0.02em;
+}
+.card .value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 500;
+}
+.dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--muted);
+  flex: 0 0 auto;
+}
+.dot.green  { background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent); }
+.dot.amber  { background: var(--amber); box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 18%, transparent); }
+.dot.red    { background: var(--red);   box-shadow: 0 0 0 3px color-mix(in srgb, var(--red)   18%, transparent); }
+
+.config-link {
+  display: block;
+  font-size: 12px;
+  margin-top: 6px;
+  color: var(--purple);
+  text-decoration: none;
+}
+.config-link:hover { text-decoration: underline; }
+
+.sensor .icon { font-size: 18px; line-height: 1; }
+.sensor .reading { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+.pin {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+.pin h2 {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  margin: 0 0 10px;
+  text-align: center;
+}
+.dots {
+  display: flex; justify-content: center; gap: 10px; margin-bottom: 14px;
+}
+.pin-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, CanvasText 30%, transparent);
+}
+.pin-dot.filled {
+  background: CanvasText;
+  border-color: CanvasText;
+}
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.key {
+  appearance: none;
+  border: 0;
+  background: var(--keypad-bg);
+  color: CanvasText;
+  font: inherit;
+  font-size: 20px;
+  font-weight: 500;
+  height: 52px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 80ms ease;
+}
+.key:hover { background: color-mix(in srgb, CanvasText 10%, transparent); }
+.key:active { transform: scale(0.97); }
+.key.submit {
+  background: var(--purple);
+  color: var(--purple-fg);
+  font-size: 16px;
+}
+.key.submit:hover { background: color-mix(in srgb, var(--purple) 88%, white); }
+
+.feedback {
+  min-height: 1.4em;
+  margin-top: 10px;
+  font-size: 13px;
+  text-align: center;
+}
+.feedback.ok    { color: var(--green); }
+.feedback.err   { color: var(--red); }
+</style>
+</head>
+<body>
+<main class="app">
+  <h1>SmartLock</h1>
+
+  <div class="row">
+    <div class="card">
+      <div class="label">Khóa</div>
+      <div class="value">
+        <span id="lock-dot" class="dot"></span>
+        <span id="lock-text">--</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="label">WiFi</div>
+      <div class="value">
+        <span id="wifi-dot" class="dot"></span>
+        <span id="wifi-text">--</span>
+      </div>
+      <a id="wifi-config" class="config-link" href="/config" hidden>Cấu hình WiFi →</a>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="card sensor">
+      <div class="label">Nhiệt độ</div>
+      <div class="value">
+        <span class="icon" aria-hidden="true">🌡️</span>
+        <span id="temp" class="reading">--°C</span>
+      </div>
+    </div>
+    <div class="card sensor">
+      <div class="label">Độ ẩm</div>
+      <div class="value">
+        <span class="icon" aria-hidden="true">💧</span>
+        <span id="humidity" class="reading">--%</span>
+      </div>
+    </div>
+  </div>
+
+  <section class="pin">
+    <h2>Nhập mã PIN</h2>
+    <div class="dots" id="pin-dots">
+      <span class="pin-dot"></span><span class="pin-dot"></span><span class="pin-dot"></span>
+      <span class="pin-dot"></span><span class="pin-dot"></span><span class="pin-dot"></span>
+    </div>
+    <div class="keypad" id="keypad">
+      <button class="key" data-k="1">1</button>
+      <button class="key" data-k="2">2</button>
+      <button class="key" data-k="3">3</button>
+      <button class="key" data-k="4">4</button>
+      <button class="key" data-k="5">5</button>
+      <button class="key" data-k="6">6</button>
+      <button class="key" data-k="7">7</button>
+      <button class="key" data-k="8">8</button>
+      <button class="key" data-k="9">9</button>
+      <button class="key" data-k="back">⌫</button>
+      <button class="key" data-k="0">0</button>
+      <button class="key submit" data-k="ok">Mở</button>
+    </div>
+    <div id="feedback" class="feedback" aria-live="polite">&nbsp;</div>
+  </section>
+</main>
+
+<script>
+(function () {
+  var pin = "";
+  var dots = document.querySelectorAll("#pin-dots .pin-dot");
+  var feedback = document.getElementById("feedback");
+
+  function renderPin() {
+    for (var i = 0; i < dots.length; i++) {
+      dots[i].classList.toggle("filled", i < pin.length);
+    }
+  }
+  function setFeedback(msg, kind) {
+    feedback.textContent = msg || " ";
+    feedback.className = "feedback" + (kind ? " " + kind : "");
+  }
+  function clearPin() { pin = ""; renderPin(); }
+
+  document.getElementById("keypad").addEventListener("click", function (e) {
+    var btn = e.target.closest("button.key");
+    if (!btn) return;
+    var k = btn.dataset.k;
+    if (k === "back") {
+      pin = pin.slice(0, -1);
+      renderPin();
+      setFeedback("");
+    } else if (k === "ok") {
+      submitPin();
+    } else if (/^[0-9]$/.test(k)) {
+      if (pin.length < 6) {
+        pin += k;
+        renderPin();
+        setFeedback("");
+      }
+    }
+  });
+
+  function submitPin() {
+    if (pin.length < 6) {
+      setFeedback("Cần đủ 6 số", "err");
+      return;
+    }
+    fetch("/unlock", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "pin=" + encodeURIComponent(pin)
+    }).then(function (r) {
+      if (r.status === 200) {
+        setFeedback("Đã mở khóa", "ok");
+      } else if (r.status === 403) {
+        setFeedback("Sai mã PIN", "err");
+      } else {
+        setFeedback("Lỗi kết nối", "err");
+      }
+      clearPin();
+    }).catch(function () {
+      setFeedback("Lỗi kết nối", "err");
+      clearPin();
+    });
+  }
+
+  // Status polling
+  var lockDot = document.getElementById("lock-dot");
+  var lockText = document.getElementById("lock-text");
+  var wifiDot = document.getElementById("wifi-dot");
+  var wifiText = document.getElementById("wifi-text");
+  var wifiConfig = document.getElementById("wifi-config");
+  var tempEl = document.getElementById("temp");
+  var humEl = document.getElementById("humidity");
+
+  function applyStatus(s) {
+    if (typeof s.locked === "boolean") {
+      lockDot.className = "dot " + (s.locked ? "green" : "red");
+      lockText.textContent = s.locked ? "Đang khóa" : "Đã mở";
+    }
+    if (typeof s.wifi === "string") {
+      if (s.wifi === "sta") {
+        wifiDot.className = "dot green";
+        wifiText.textContent = "Đã kết nối";
+        wifiConfig.hidden = true;
+      } else if (s.wifi === "ap") {
+        wifiDot.className = "dot amber";
+        wifiText.textContent = "Chưa kết nối";
+        wifiConfig.hidden = false;
+      } else if (s.wifi === "connecting") {
+        wifiDot.className = "dot amber";
+        wifiText.textContent = "Đang kết nối...";
+        wifiConfig.hidden = true;
+      } else {
+        wifiDot.className = "dot";
+        wifiText.textContent = "--";
+        wifiConfig.hidden = true;
+      }
+    }
+    tempEl.textContent = (s.temp == null) ? "--°C" : s.temp + "°C";
+    humEl.textContent = (s.humidity == null) ? "--%" : s.humidity + "%";
+  }
+
+  function poll() {
+    fetch("/status", { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (s) { if (s) applyStatus(s); })
+      .catch(function () { /* keep last known */ });
+  }
+  poll();
+  setInterval(poll, 1000);
+})();
+</script>
+</body>
+</html>
